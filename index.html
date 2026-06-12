@@ -492,11 +492,135 @@ document.getElementById('gen-btn').addEventListener('click', async function(){
     status.textContent='✦ Chart complete for '+name;
     status.className='status success';
 
-    // Download button
+    // Download button — combines wheel + planet table into one transparent PNG
     document.getElementById('dl-btn').onclick = function(){
-      var canvas = document.getElementById('wheel');
+      var wheelCanvas = document.getElementById('wheel');
+      var W = 2700;
+      var tableH = 900; // height of planet table section
+      var combined = document.createElement('canvas');
+      combined.width = W;
+      combined.height = W + tableH;
+      var c = combined.getContext('2d');
+
+      // Draw wheel at top (transparent background preserved)
+      c.drawImage(wheelCanvas, 0, 0, W, W);
+
+      // Draw planet table below
+      var GOLD='#e8d5a0', GOLDC='#c9a84c';
+      var tx = 0, ty = W + 20;
+      var TW = W;
+
+      // Divider line
+      c.beginPath();
+      c.moveTo(tx+80, ty);
+      c.lineTo(tx+TW-80, ty);
+      c.strokeStyle='rgba(201,168,76,0.35)';
+      c.lineWidth=2;
+      c.stroke();
+
+      // Title
+      ty += 50;
+      c.textAlign='center';
+      c.font='bold 52px "Cormorant Garamond",Georgia,serif';
+      c.fillStyle=GOLDC;
+      c.letterSpacing='0.45em';
+      c.fillText('PLANET POSITIONS', W/2, ty);
+      ty += 60;
+
+      // Divider line
+      c.beginPath();
+      c.moveTo(tx+80, ty);
+      c.lineTo(tx+TW-80, ty);
+      c.strokeStyle='rgba(201,168,76,0.35)';
+      c.lineWidth=2;
+      c.stroke();
+      ty += 50;
+
+      // Planet data
+      var pd = chartData.planets;
+      var signGlyphs=['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
+      var signNames=['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+      function signOf(ecl){ var n=Math.floor(((ecl%360)+360)%360/30); return signGlyphs[n]+' '+signNames[n]; }
+      function degStr(ecl){ var pos=((ecl%360)+360)%360%30; var d=Math.floor(pos),m=Math.floor((pos-d)*60); return d+'°'+String(m).padStart(2,'0')+"'"; }
+
+      var left=[
+        {g:'☉',n:'Sun',k:'sun'},
+        {g:'☽',n:'Moon',k:'moon'},
+        {g:'☿',n:'Mercury',k:'mercury'},
+        {g:'♀',n:'Venus',k:'venus'},
+        {g:'♂',n:'Mars',k:'mars'},
+      ];
+      var right=[
+        {g:'♃',n:'Jupiter',k:'jupiter'},
+        {g:'♄',n:'Saturn',k:'saturn'},
+        {g:'♅',n:'Uranus',k:'uranus'},
+        {g:'♆',n:'Neptune',k:'neptune'},
+        {g:'♇',n:'Pluto',k:'pluto'},
+      ];
+
+      var rowH = 110;
+      var symFont = '68px "Noto Sans Symbols 2","Segoe UI Symbol",sans-serif';
+      var nameFont = '62px "EB Garamond",Georgia,serif';
+      var dataFont = '62px "EB Garamond",Georgia,serif';
+
+      // Vertical center divider
+      c.beginPath();
+      c.moveTo(W/2, ty-10);
+      c.lineTo(W/2, ty + rowH*5 + 20);
+      c.strokeStyle='rgba(201,168,76,0.2)';
+      c.lineWidth=2;
+      c.stroke();
+
+      for(var i=0;i<5;i++){
+        var rowY = ty + i*rowH + rowH*0.6;
+        var lp = pd[left[i].k], rp = pd[right[i].k];
+
+        // Left planet
+        if(lp){
+          c.textAlign='left';
+          c.font=symFont; c.fillStyle=GOLDC; c.fillText(left[i].g, 120, rowY);
+          c.font=nameFont; c.fillStyle='#9ab8d4'; c.fillText(left[i].n, 240, rowY);
+          c.font=dataFont; c.fillStyle=GOLD; c.fillText(degStr(lp.ecl), 620, rowY);
+          c.font=symFont; c.fillStyle=GOLDC; c.fillText(signOf(lp.ecl), 880, rowY);
+        }
+
+        // Right planet
+        if(rp){
+          c.textAlign='left';
+          c.font=symFont; c.fillStyle=GOLDC; c.fillText(right[i].g, W/2+80, rowY);
+          c.font=nameFont; c.fillStyle='#9ab8d4'; c.fillText(right[i].n, W/2+200, rowY);
+          c.font=dataFont; c.fillStyle=GOLD; c.fillText(degStr(rp.ecl), W/2+580, rowY);
+          c.font=symFont; c.fillStyle=GOLDC; c.fillText(signOf(rp.ecl), W/2+840, rowY);
+        }
+
+        // Row divider
+        if(i<4){
+          c.beginPath();
+          c.moveTo(80, ty+i*rowH+rowH);
+          c.lineTo(W-80, ty+i*rowH+rowH);
+          c.strokeStyle='rgba(201,168,76,0.08)';
+          c.lineWidth=1.5;
+          c.stroke();
+        }
+      }
+
+      // AC / MC row
+      ty += rowH*5 + 40;
+      c.beginPath(); c.moveTo(80,ty-20); c.lineTo(W-80,ty-20); c.strokeStyle='rgba(201,168,76,0.25)'; c.lineWidth=2; c.stroke();
+      var asc=pd.asc, mc=pd.mc;
+      if(asc){
+        c.font='italic 62px "EB Garamond",Georgia,serif'; c.fillStyle=GOLDC; c.textAlign='left'; c.fillText('AC Ascendant', 120, ty+60);
+        c.font=dataFont; c.fillStyle=GOLD; c.fillText(degStr(asc.ecl), 620, ty+60);
+        c.font=symFont; c.fillStyle=GOLDC; c.fillText(signOf(asc.ecl), 880, ty+60);
+      }
+      if(mc){
+        c.font='italic 62px "EB Garamond",Georgia,serif'; c.fillStyle=GOLDC; c.textAlign='left'; c.fillText('MC Midheaven', W/2+80, ty+60);
+        c.font=dataFont; c.fillStyle=GOLD; c.fillText(degStr(mc.ecl), W/2+580, ty+60);
+        c.font=symFont; c.fillStyle=GOLDC; c.fillText(signOf(mc.ecl), W/2+840, ty+60);
+      }
+
       var a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
+      a.href = combined.toDataURL('image/png');
       a.download = name.toLowerCase().replace(/\s+/g,'-')+'-natal-chart.png';
       a.click();
     };
